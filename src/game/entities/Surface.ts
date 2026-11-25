@@ -1,4 +1,4 @@
-import { GameObjects, Geom, Scene } from "phaser";
+import { GameObjects, Scene } from "phaser";
 
 
 

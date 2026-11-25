@@ -1,7 +1,9 @@
 import { EventBus } from '../EventBus';
-import { GameObjects, Scene } from 'phaser';
+import { GameObjects, Scene, Math } from 'phaser';
 
-import { LOAD_CONFIG_SPRITE_SHEET} from '../configs/animation'
+import { LOAD_CONFIG_SPRITE_SHEET, 
+        LOAD_CONFIG_SMALLENEMY_SPRITE_SHEET_1
+        } from '../configs/animation'
 
 import { Player } from '../entities/Player';
 import { Surface } from '../entities/Surface';
@@ -10,17 +12,11 @@ import { SmallEnemy } from '../entities/SmallEnemy';
 export class Game extends Scene
 {
     camera: Phaser.Cameras.Scene2D.Camera;
-    background: Phaser.GameObjects.Image;
     gameText: Phaser.GameObjects.Text;
-
-
     player: Player;
-
-
+    testEnemy: SmallEnemy;
     surfaces: Surface[];
-
-    enemyes: GameObjects.Group
-
+    enemyes: GameObjects.Group;
     constructor ()
     {
         super('Game');
@@ -32,22 +28,53 @@ export class Game extends Scene
 
     create ()
     {
-        
-        const map = this.make.tilemap({key: 'testMap',})
-        // console.log(map)
-
-        const objLayer = map.getObjectLayer('enemySpawn')
-
-        // console.log(objLayer)
-        objLayer?.objects.forEach((obj) => {
-
-            if (obj.name === 'enemy_1') {
-                this.testEnemy = new SmallEnemy(this, obj.x, obj.y, 'enemy_1-idle', obj.width)
-            }
 
 
+        this.player = new Player(this, 200, 700, 'player')
+
+        LOAD_CONFIG_SMALLENEMY_SPRITE_SHEET_1.forEach(cfg => {
+            this.createAnimated(cfg.key, cfg.amountFrames, cfg.frames)
+        });
+
+        LOAD_CONFIG_SPRITE_SHEET.forEach(cfg => {
+            this.createAnimated(cfg.key, cfg.amountFrames, cfg.frames)
+        });
+
+        this.enemyes = this.add.group({
+            classType: SmallEnemy,
+            runChildUpdate: true  //включает вызовы метода update у детей
         })
 
+
+
+
+        const map = this.make.tilemap({key: 'testMap',})
+
+        const objLayer = map.getObjectLayer('SpawnSmallEnemy')
+        if (!objLayer) {
+            throw new Error('Не удалось найти objLayer');
+        }
+        const sortedObjlayer = objLayer.objects.sort((a,b) => a.id - b.id)
+        sortedObjlayer.forEach((obj) => {
+            if (obj.name === `SpawnSmallEnemy_${obj.id}`) {
+                const testEnemy = new SmallEnemy(
+                    {
+                        scene:this, 
+                        x: obj.x??0, //если undefined то 0
+                        y: obj.y??0, 
+                        texture: 'enemy_1-idle',
+                        playerAttacking: this.player
+                    }, 
+                    obj.width??0,
+                    `goblin_${obj.id}`
+                )
+               
+            this.enemyes.add(testEnemy)
+            }
+        })
+
+        console.log(this.enemyes)
+        
         const tileset = map.addTilesetImage(
             "world_tileset",
             'worldTileset',
@@ -61,7 +88,6 @@ export class Game extends Scene
             16,
             16
         )
-        // console.log(tileset)
         if (!tileset || !tileset2) {
             throw new Error('Не удалось подключить world_tileset');
         }
@@ -82,50 +108,18 @@ export class Game extends Scene
             throw new Error('Не удалось создать слои карты');
         }
 
-
-
         earthLayer.setCollisionBetween(1, 48);
         earthLayer.setCollisionBetween(82, 84);
-
 
         skyBlockLayer.setCollisionBetween(82, 84);
         earthLayer.setDepth(-1);
         skyBlockLayer.setDepth(0);
-        
-
-        
-
-        this.player = new Player(this, 200, 700, 'player')
-        
-        LOAD_CONFIG_SPRITE_SHEET.forEach(cfg => {
-            this.player.createAnimated(cfg.key, cfg.amountFrames, cfg.frames)
-        });
-
-        {
-          // CREATE ENEMYES IS TEST
-
-        // this.testEnemy = new SmallEnemy(this, 500, 720, 'enemy_1-idle')
-        // this.testEnemy.createAnimated('enemy_1-idle', {start: 0, end: 3, first:0}, {
-        //     key: 'enemy_1_idle',
-        //     frameRate: 5,
-        //     repeat: -1
-        // })
-        // this.testEnemy.createAnimated('enemy_1-hurt', {start: 0, end: 3, first:0}, {
-        //     key: 'enemy_1_hurt',
-        //     frameRate: 5,
-        //     repeat: 0
-        // })
-        // this.testEnemy.anims.play('enemy_1_idle')
-        // this.enemyes = new GameObjects.Group(this)
-        // this.enemyes.add(this.testEnemy)  
-        }
-        
 
         this.physics.add.collider(this.player, earthLayer);
         this.physics.add.collider(this.player, skyBlockLayer);
 
-        this.physics.add.collider(this.testEnemy, earthLayer);
-        this.physics.add.collider(this.testEnemy, skyBlockLayer);
+        this.physics.add.collider(this.enemyes, earthLayer);
+        this.physics.add.collider(this.enemyes, skyBlockLayer);
 
         this.player.pressBtnAttack()
         this.player.animationUpdateAttack(this.enemyes)
@@ -139,14 +133,43 @@ export class Game extends Scene
     }
 
     update(): void {
-
-        
         this.player.updateMove()
-
-
+        this.enemyes.getChildren().forEach((enemy) => {
+            const e = enemy as SmallEnemy
+            if (Math.Distance.Between(e.x, e.y, this.player.x, this.player.y) < 100){
+                    if (e.x >= this.player.x){
+                        e.setFlipX(true)
+                    }
+                    else {
+                        e.setFlipX(false)
+                    }                 
+                }
+        })
     }
 
-
+    createAnimated(
+        texture:string, 
+        frameConfig?:Phaser.Types.Animations.GenerateFrameNumbers, 
+        config?: Phaser.Types.Animations.Animation)
+        {
+          
+            let currentFrameConfig:Phaser.Types.Animations.GenerateFrameNumbers = {
+                start:0, 
+                end:1,
+                first: 0
+            }
+            if (frameConfig) currentFrameConfig = {...currentFrameConfig, ...frameConfig}
+            let animationConfig: Phaser.Types.Animations.Animation = {
+                key: 'idle',
+                frames: this.anims.generateFrameNumbers(texture, currentFrameConfig),
+                frameRate: 7,
+                repeat: -1 
+            }
+            if (config) {
+                animationConfig = {...animationConfig, ...config}
+            }
+            this.anims.create(animationConfig)
+        }
 
     changeScene ()
     {

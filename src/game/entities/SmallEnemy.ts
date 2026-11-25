@@ -1,43 +1,55 @@
-import { GameObjects, Scene, Time } from "phaser";
+import { GameObjects, Scene, Time, Animations } from "phaser";
 import { Player } from "./Player";
-
-
-
-
-
-
-
-
-
-
+import type { SmallEnemyConfigs } from "../types/entities";
 
 
 export class SmallEnemy extends GameObjects.Sprite {
     health : number = 5
-    promiseAttack: boolean = false
-    attackedTime: Time.TimerEvent
-    constructor(scene: Phaser.Scene, x: number, y: number, texture: string, size: number){
+    timeAttack: number = 1000
+    hitRegistered: boolean = false
+    attackedTime?: Time.TimerEvent
+    playerAttacking: Player
+    constructor({scene, x, y, texture, playerAttacking }: SmallEnemyConfigs, size?: number, enemyType?: string){
         super(scene, x, y, texture);
+        this.playerAttacking = playerAttacking
         this.scene = scene as Scene
-        this.setScale(Number((size / this.displayWidth).toFixed(2)))
-
-        console.log(this.displayWidth)
-        this.setOrigin(0, 0)
         this.scene.add.existing(this);
         this.scene.physics.add.existing(this, false)
 
+        this.setData('type', enemyType??'0');
+        this.setOrigin(0, 0)
+        this.flipX = true
+
         const body = this.body as Phaser.Physics.Arcade.Body
-        
+
         if (body) {
+            body.setSize(26, 25, false)
             body.setGravityY(200)
             body.setBounce(0);
             body.setCollideWorldBounds(true);
             
         }
-        
-        this.on('animationcomplete-enemy_1_hurt', () => {
-            this.anims.play('enemy_1_idle', true);
+
+        this.anims?.play('goblin-IDLE', true);
+        this.on('animationcomplete', (anim: Animations.Animation) => {
+            if (anim.key === 'goblin-HIT' || anim.key === 'goblin-ATTACK') {
+                this.anims.play('goblin-IDLE', true);
+            }
         });
+
+        this.on('animationupdate', (anim: Animations.Animation, frame: Animations.AnimationFrame) => {
+            if (anim.key === 'goblin-ATTACK' && frame.index === 5) {
+                    this.playerAttacking.health -= 1
+                    if (!this.hitRegistered){
+                        this.hitRegistered = true
+                    }
+                    console.log(this.playerAttacking, 'получил урон, текущее здоровье', this.playerAttacking.health)
+            }
+        })
+    }
+
+    get getEnemyType():string{
+        return this.getData('type')
     }
 
     static preload(
@@ -48,68 +60,62 @@ export class SmallEnemy extends GameObjects.Sprite {
         scene.load.spritesheet(key, path, config) 
     }
 
-    createAnimated(
-        texture:string, 
-        frameConfig?:Phaser.Types.Animations.GenerateFrameNumbers, 
-        config?: Phaser.Types.Animations.Animation)
-        {
-          
-            let currentFrameConfig:Phaser.Types.Animations.GenerateFrameNumbers = {
-                start:0, 
-                end:1,
-                first: 0
-            }
-            if (frameConfig) currentFrameConfig = {...currentFrameConfig, ...frameConfig}
-            let animationConfig: Phaser.Types.Animations.Animation = {
-                key: 'idle',
-                frames: this.scene.anims.generateFrameNumbers(texture, currentFrameConfig),
-                frameRate: 7,
-                repeat: -1 
-            }
-            if (config) {
-                animationConfig = {...animationConfig, ...config}
-            }
-            this.scene.anims.create(animationConfig)
-        }
-
     takeDamage(damage: number, direction: boolean){
         const enemyBody = this.body as Phaser.Physics.Arcade.Body
         if(this.health>0) {
             this.health -= damage
             enemyBody.setDragX(800)
-            // console.log('direction', direction)
             if (direction) {
                 enemyBody.setVelocityX(-400);
-                
-                
             } else {
                 enemyBody.setVelocityX(400);
             }
-            
-            
         }
-        this.anims?.play('enemy_1_hurt')
-        console.log(`enemy.health - ${this.health}`)     
+        this.anims?.play('goblin-HIT')
+        if (this.health <= 0) this.destroy(true);
+        console.log(`enemy.health - ${this.health}`)
+        return     
     }
 
     destroy(fromScene?: boolean) {
         if (this.attackedTime) this.attackedTime.destroy();
         super.destroy(fromScene);
+        console.log('His DEAD!')
     }
 
-    attack(player: Player){
-        if (this.promiseAttack) return
-        const isTounching = this.scene.physics.overlap(this, player)
+    attack(){
+        if (this.hitRegistered) return
+        const isTounching = this.scene.physics.overlap(this, this.playerAttacking)
         if (isTounching) {
-            if (player.health > 0) player.health -= 1
-            this.promiseAttack = true
 
-            if (this.attackedTime) this.attackedTime.destroy()
-                this.attackedTime = this.scene.time.delayedCall(1000, () => {   
-                    this.promiseAttack = false;
+            this.hitRegistered = true
+            if (this.attackedTime) {
+                this.attackedTime.destroy()
+            }
+            this.attackedTime = this.scene.time.delayedCall(1000, () => {   
+                const stillTouching = this.scene.physics.overlap(this, this.playerAttacking);
+                if (this.playerAttacking.health > 0 && stillTouching) {
+                    this.anims?.play('goblin-ATTACK', true)
+                }
+                this.hitRegistered = false;
+                this.attackedTime = undefined; 
             })
         }  
+        else {
+            if (this.attackedTime) {
+                this.attackedTime.destroy()
+                this.attackedTime = undefined;
+                console.log('Удалили', this.attackedTime)
+            }
+            this.hitRegistered = false;
+        }
     }
 
+    update(): void{
+        if (!(this.scene instanceof Scene)) return;
+        const player = this.playerAttacking;
+        if (!player) return
+        this.attack()
+    }
 
 }

@@ -1,12 +1,10 @@
 import { Scene } from 'phaser';
-
 import { Player } from '../entities/Player';
-import { Game } from './Game';
 import { SmallEnemy } from '../entities/SmallEnemy';
 
 export class Preloader extends Scene
 {
-    player: Player;
+
     constructor ()
     {
         super('Preloader');
@@ -35,92 +33,113 @@ export class Preloader extends Scene
 
         this.load.setPath('assets');
 
-        try{
-            this.load.tilemapTiledJSON(
-                'testMap',
-                '/maps/test_tileMap_3.tmj'
-            )
-            this.load.image(
-                'GrasslandTerrainTileset',
-                'tiles/Grassland_Terrain_Tileset.png'
-            );
-            this.load.image(
-                'worldTileset',
-                'tiles/world_tileset.png'
-            );
+        
+        this.load.tilemapTiledJSON(
+            'testMap',
+            '/maps/test_tileMap_3.tmj'
+        )
+        this.load.image(
+            'GrasslandTerrainTileset',
+            'tiles/Grassland_Terrain_Tileset.png'
+        );
+        this.load.image(
+            'worldTileset',
+            'tiles/world_tileset.png'
+        );
             // console.log('Успех')
-        } catch (e){
-            console.error('ошибка', e)
-        }
+       
         
-        
-        SmallEnemy.preload(
-            this, 
-            "enemy_1-idle", 
-            "small_enemy/dimon/IDLE.png", 
-            {
-                frameWidth: 81,
-                frameHeight: 71,
-                // spacing: 63
-            }
-        )
-        SmallEnemy.preload(
-            this, 
-            "enemy_1-hurt", 
-            "small_enemy/dimon/HURT.png", 
-            {
-                frameWidth: 81,
-                frameHeight: 71,
-                // spacing: 63
-            }
-        )
+
 
         Player.preload(
             this, 
             "player-idle", 
-            "player/idle/IDLE_3.png", 
+            "player/KNIGHT_2/IDLE.png", 
             {
-                frameWidth: 54,
+                frameWidth: 34,
                 frameHeight: 37,
                 // spacing: 63
             }
         )
-        
         Player.preload(
             this, 
             "player-run", 
-            "player/run/RUN_4.png", 
+            "player/KNIGHT_2/RUN.png", 
             {
-                frameWidth: 54,
+                frameWidth: 37,
                 frameHeight: 37,
-               
+                // spacing: 63
+            }
+        )
+        Player.preload(
+            this, 
+            "player-attack_1", 
+            "player/KNIGHT_2/ATTACK_1_1.png", 
+            {
+                frameWidth: 60,
+                frameHeight: 37,
+                // spacing: 63
+            }
+        )
+        Player.preload(
+            this, 
+            "player-attack_2", 
+            "player/KNIGHT_2/ATTACK_2.png", 
+            {
+                frameWidth: 62,
+                frameHeight: 37,
+                // spacing: 63
+            }
+        )
+        Player.preload(
+            this, 
+            "player-attack_3", 
+            "player/KNIGHT_2/ATTACK_3.png", 
+            {
+                frameWidth: 60,
+                frameHeight: 51,
+                // spacing: 63
             }
         )
 
-        for (let i=1; i<4; i++){
-            Player.preload(
-                this, 
-                `player-attack_${i}`, 
-                `player/attacks/ATTACK_${i}-${i+1}.png`, 
-                {
-                    frameWidth: 54,
-                    frameHeight: 37
-                }
-        )
-        }
+        SmallEnemy.preload(
+            this, 
+            "Goblin_enemy_IDLE", 
+            "small_enemy/goblin_enemy/Goblin_enemy_IDLE.png", 
+            {
+                frameWidth: 26,
+                frameHeight: 25,
 
-       
-        //  Load the assets for the game - Replace with your own assets
-        
-        this.load.on('complete', () => {
-            // console.log(this.scene)
-           
-            this.scene.start('Game');
-        });
+            }
+        )
+        SmallEnemy.preload(
+            this, 
+            "Goblin_enemy_HIT", 
+            "small_enemy/goblin_enemy/Goblin_enemy_HIT.png", 
+            {
+                frameWidth: 26,
+                frameHeight: 25,
+                // spacing: 63
+            }
+        )
+
+        SmallEnemy.preload(
+            this, 
+            "Goblin_enemy_ATTACK", 
+            "small_enemy/goblin_enemy/Goblin_enemy_ATTACK.png", 
+            {
+                frameWidth: 39,
+                frameHeight: 26,
+                // spacing: 63
+            }
+        )
+
     }
 
     create ()
     {
+
+        this.scene.start('Game');
         //  When all the assets have loaded, it's often worth creating global objects here that the rest of the game can use.
         //  For example, you can define global animations here, so we can use them in other scenes.
 
